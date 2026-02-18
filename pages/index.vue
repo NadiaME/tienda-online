@@ -1,24 +1,27 @@
 <script setup>
-import products from '~/data/products.json'
-import { useCartStore } from '~/stores/cart'
+import { supabase } from '@/utils/supabase'
 
-const cart = useCartStore()
+const products = ref([])
 
-onMounted(() => {
-  cart.load()
+onMounted(async () => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+
+  if (error) {
+    console.error(error)
+  } else {
+    products.value = data
+  }
 })
 </script>
 
 <template>
-  <Header />
-
   <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-    <ProductCard
-      v-for="p in products"
-      :key="p.id"
-      :product="p"
-    />
+    <ProductCard v-for="p in products" :key="p.id" :product="p" />
   </div>
-
-  <CartDrawer />
+  
+  <ClientOnly>
+    <CartDrawer />
+  </ClientOnly>
 </template>

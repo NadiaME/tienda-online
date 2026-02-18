@@ -1,0 +1,10 @@
+body {
+  background-color: var(--body-bg);
+  color: var(--body-text);
+}
+
+.btn-primary {
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+  border-radius: var(--btn-radius);
+}

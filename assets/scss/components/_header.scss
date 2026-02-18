@@ -1,0 +1,25 @@
+.header.animated {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+.header-store {
+    display: flex;
+    padding: 1.5rem 1.5rem;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar--right {
+    display: flex;
+    gap: 1.5rem;
+
+    &.active {
+        display: block;
+    }
+}
+
+.nav-titles {
+    display: flex;
+    gap: 1.5rem;
+    color: var(--header-text);
+}
