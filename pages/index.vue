@@ -18,10 +18,10 @@ onMounted(async () => {
 
 <template>
   <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-    <ProductCard v-for="p in products" :key="p.id" :product="p" />
+    <ProductCard v-for="p in products" :key="p.id" :product="p" v-memo="[p.id]"/>
   </div>
   
   <ClientOnly>
-    <CartDrawer />
+    <LazyCartDrawer hydrate-on-interaction />
   </ClientOnly>
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { clientConfig } from '@/data/client.config'
 
@@ -24,7 +24,7 @@ const closeMenu = () => {
 // lifecycle (CLIENT ONLY)
 onMounted(() => {
     window.addEventListener('scroll', handleScroll)
-    cart.init();
+    cartStore.init()
 })
 
 onUnmounted(() => {
@@ -32,7 +32,20 @@ onUnmounted(() => {
 })
 
 // store
-const cart = useCartStore()
+const cartStore = useCartStore()
+
+const bounce = ref(false)
+
+watch(
+    () => cartStore.totalItems,
+    () => {
+        bounce.value = true
+
+        setTimeout(() => {
+            bounce.value = false
+        }, 300)
+    }
+)
 </script>
 
 <template>
@@ -43,7 +56,8 @@ const cart = useCartStore()
     ]" class="header-store">
         <div class="flex items-center gap-3">
             <NuxtLink to="/">
-                <img :src="clientConfig.logo" alt="Logo" class="h-10" />
+                <img :src="clientConfig.logo" alt="Logo" class="transition-all duration-300"
+                    :class="isScrolled ? 'h-8' : 'h-10'" />
             </NuxtLink>
             <span class="font-bold text-xl">
                 {{ clientConfig.storeName }}
@@ -57,9 +71,10 @@ const cart = useCartStore()
                 <NuxtLink to="/contacto" @click="closeMenu">Contacto</NuxtLink>
             </li>
         </ul>
-
-        <button @click="cart.toggle" class="bg-white text-black px-4 py-2 rounded-lg">
-            🛒 ({{ cart.totalItems }})
+        <button id="cart-button" @click="cartStore.toggle()"
+            class="bg-white text-black px-4 py-2 rounded-lg transition-transform duration-300"
+            :class="bounce ? 'scale-125 rotate-6' : 'scale-100'">
+            🛒 {{ cartStore.totalItems }}
         </button>
     </header>
 </template>

@@ -1,25 +1,47 @@
-<script>
-import { supabase } from '@/utils/supabase'
+<script setup>
+import { useCartStore } from '@/stores/cart'
 
+const cartStore = useCartStore()
 const { createOrder } = useOrders()
+const loading = ref(false)
 
 const submitOrder = async () => {
+  if (loading.value) return
+  loading.value = true
+
   const result = await createOrder({
     name: customerName.value,
     email: customerEmail.value,
     phone: customerPhone.value,
-    cartItems: cart.value
+    cartItems: cartStore.items
   })
+
+  loading.value = false
 
   if (result.success) {
     alert('Pedido enviado correctamente')
-    // acá después vaciamos el carrito
+
+    cartStore.clearCart()   // vacía carrito
+    cartStore.open = false  // 👈 cierra drawer
   } else {
     alert('Error al enviar el pedido')
   }
 }
+
+
+const finalizarCompra = async () => {
+  await createOrder({
+    name,
+    email,
+    phone,
+    cartItems: cartStore.items
+  })
+
+  cartStore.clearCart()
+  cartStore.open = false
+}
 </script>
 
 <template>
-    <CartDrawer />
+  <LazyCartDrawer hydrate-on-interaction />
 </template>

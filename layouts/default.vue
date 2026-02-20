@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { themes } from '@/config/theme'
+import { themes } from '~/config/theme'
 
-const theme = themes.default!
+const config = useRuntimeConfig()
+const theme = themes[config.public.storeId as keyof typeof themes]
+
 </script>
 
 <template>
@@ -15,7 +17,7 @@ const theme = themes.default!
       '--radius-base': theme.radius.base
     }"
   >
-    <Header />
+    <Header :theme="theme" />
     <NuxtPage />
   </div>
 </template>

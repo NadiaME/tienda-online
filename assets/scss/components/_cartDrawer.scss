@@ -1,0 +1,38 @@
+/* overlay fade */
+.drawer-enter-active,
+.drawer-leave-active {
+    transition: all 0.3s ease;
+}
+
+/* estado inicial */
+.drawer-enter-from {
+    opacity: 0;
+}
+
+/* estado final */
+.drawer-enter-to {
+    opacity: 1;
+}
+
+/* salida */
+.drawer-leave-to {
+    opacity: 0;
+}
+
+/* animación del panel lateral */
+.drawer-enter-from>div {
+    transform: translateX(100%);
+}
+
+.drawer-enter-to>div {
+    transform: translateX(0);
+}
+
+.drawer-leave-to>div {
+    transform: translateX(100%);
+}
+
+.drawer-enter-active>div,
+.drawer-leave-active>div {
+    transition: transform 0.3s ease;
+}

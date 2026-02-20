@@ -1,13 +1,20 @@
 import { defineStore } from 'pinia'
 
 const STORAGE_KEY = 'tienda-cart'
+export interface Product {
+  id: number
+  name: string
+  price: number
+  image: string
+  slug?: string
+}
 
 export interface CartItem {
   id: number
   name: string
   price: number
   quantity: number
-  image?: string
+  image: string
 }
 
 export const useCartStore = defineStore('cart', {
@@ -18,7 +25,9 @@ export const useCartStore = defineStore('cart', {
   }),
 
   getters: {
-    totalItems: (state) => state.items.length,
+    totalItems: (state) =>
+      state.items.reduce((sum, item) => sum + item.quantity, 0),
+
 
     totalPrice: (state) =>
       state.items.reduce(
@@ -39,15 +48,22 @@ export const useCartStore = defineStore('cart', {
       }
     },
 
-    add(product: CartItem) {
+    add(product: Product) {
       const existing = this.items.find(i => i.id === product.id)
 
       if (existing) {
-        existing.quantity += product.quantity
+        existing.quantity++
       } else {
-        this.items.push(product)
+        this.items.push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image, // ⭐ ahora SIEMPRE se guarda
+          quantity: 1
+        })
       }
 
+      this.open = true
       this.persist()
     },
 
