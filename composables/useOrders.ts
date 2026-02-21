@@ -12,7 +12,7 @@ export const useOrders = () => {
         email: string
         phone: string
         cartItems: Array<{ price: number; quantity: number }>
-        status: string
+        status?: string
     }) => {
         const total = cartItems.reduce((sum, item) => {
             const price = Number(item.price) || 0

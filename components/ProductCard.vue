@@ -1,41 +1,63 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 
+/* =========================
+   PROPS TIPADAS
+========================= */
+
+interface Product {
+  id: number
+  name: string
+  price: number
+  slug: string
+  images?: string[]
+}
+
+const props = defineProps < {
+  product: Product
+} > ()
+
 const cart = useCartStore()
 
-const added = ref(false)
+/* =========================
+   ESTADO
+========================= */
 
-const props = defineProps({
-  product: Object
-})
+const added = ref(false)
+const productImage = ref < HTMLElement | null > (null)
+
+/* =========================
+   AGREGAR AL CARRITO
+========================= */
 
 const addProduct = () => {
   cart.add(props.product)
-  flyToCart()
+  animateToCart()
 
   added.value = true
-
-  setTimeout(() => {
-    added.value = false
-  }, 1000)
+  setTimeout(() => (added.value = false), 1000)
 }
 
-const productImage = ref(null)
+/* =========================
+   ANIMACIÓN
+========================= */
 
-const flyToCart = () => {
+const animateToCart = () => {
+  if (!import.meta.client) return
+
   const container = productImage.value
   const cartBtn = document.getElementById('cart-button')
 
   if (!container || !cartBtn) return
 
-  const realImg = container.querySelector('img')
-  if (!realImg) return
+  const img = container.querySelector('img')
+  if (!img) return
 
-  const imgRect = realImg.getBoundingClientRect()
+  const imgRect = img.getBoundingClientRect()
   const cartRect = cartBtn.getBoundingClientRect()
 
-  const clone = realImg.cloneNode(true)
+  const clone = img.cloneNode(true) as HTMLImageElement
 
   Object.assign(clone.style, {
     position: 'fixed',
@@ -44,7 +66,7 @@ const flyToCart = () => {
     width: `${imgRect.width}px`,
     height: `${imgRect.height}px`,
     transition: 'all 0.7s cubic-bezier(.4,-0.3,.3,1.4)',
-    zIndex: 9999,
+    zIndex: '9999',
     pointerEvents: 'none'
   })
 
@@ -63,30 +85,39 @@ const flyToCart = () => {
   cartBtn.classList.add('cart-bounce')
   setTimeout(() => cartBtn.classList.remove('cart-bounce'), 300)
 }
-
 </script>
 
 
 <template>
   <div class="border rounded-xl p-4 shadow">
-    <NuxtLink :to="`/producto/${props.product.slug}`" prefetch-on="interaction">
+    <NuxtLink
+      :to="`/producto/${product.slug}`"
+      prefetch-on="interaction"
+    >
       <div ref="productImage">
-        <NuxtImg :src="props.product.image" format="webp" quality="80" loading="lazy"
-          class="object-cover w-full h-full" />
+        <NuxtImg
+          :src="product.images?.[0] || ''"
+          format="webp"
+          quality="80"
+          loading="lazy"
+          class="object-cover w-full h-full"
+        />
       </div>
     </NuxtLink>
+
     <h2 class="mt-2 font-semibold">
-      {{ props.product.name }}
+      {{ product.name }}
     </h2>
 
     <p class="text-gray-600">
-      ${{ props.product.price }}
+      ${{ product.price }}
     </p>
 
-    <button @click="addProduct" class="mt-3 w-full py-2 rounded-lg transition-all duration-200 active:scale-95
- flex items-center justify-center gap-2" :class="added
-  ? 'bg-green-600 text-white'
-  : 'bg-black text-white'">
+    <button
+      @click="addProduct"
+      class="mt-3 w-full py-2 rounded-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
+      :class="added ? 'bg-green-600 text-white' : 'bg-black text-white'"
+    >
       <span v-if="added">✔ Agregado</span>
       <span v-else>Agregar al carrito</span>
     </button>

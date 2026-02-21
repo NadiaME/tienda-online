@@ -1,30 +1,60 @@
 <script setup lang="ts">
 import { supabase } from '@/utils/supabase'
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, reactive, onMounted } from 'vue'
+
+/* =========================
+   ESTADO
+========================= */
+
+const products = ref<any[]>([])
+const categories = ref<string[]>([])
+const loading = ref(false)
 
 const currentPage = ref(1)
 const itemsPerPage = 5
 const totalProducts = ref(0)
+
 const search = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('created_at')
 const sortDirection = ref<'asc' | 'desc'>('desc')
 
-const totalPages = computed(() =>
-    Math.ceil(totalProducts.value / itemsPerPage)
-)
+const imageFiles = ref<File[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
-const products = ref<any[]>([])
-const loading = ref(false)
+/* =========================
+   FORMULARIO
+========================= */
 
 const form = reactive({
-    id: null,
+    id: null as number | null,
     name: '',
     price: '',
-    image: '',
     description: '',
-    category: ''
+    category: '',
+    images: [] as string[],
+    stock_online: 0
 })
+
+/* =========================
+   UTILIDADES
+========================= */
+
+const generateSlug = (text: string) =>
+    text
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]+/g, '')
+
+const normalizeCategory = (value: string) => {
+    const clean = value.trim().toLowerCase()
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
+}
+
+/* =========================
+   FETCH PRODUCTOS
+========================= */
 
 const loadProducts = async () => {
     const from = (currentPage.value - 1) * itemsPerPage
@@ -34,27 +64,39 @@ const loadProducts = async () => {
         .from('products')
         .select('*', { count: 'exact' })
 
-    // 🔎 Buscador
-    if (search.value) {
+    if (search.value)
         query = query.ilike('name', `%${search.value}%`)
-    }
 
-    // 🎛 Filtro categoría
-    if (selectedCategory.value) {
+    if (selectedCategory.value)
         query = query.eq('category', selectedCategory.value)
-    }
 
-    // ↕ Orden
     query = query.order(sortBy.value, {
         ascending: sortDirection.value === 'asc'
     })
 
-    // 📄 Paginación
     const { data, count } = await query.range(from, to)
 
     products.value = data || []
     totalProducts.value = count || 0
+
+    updateCategories()
 }
+
+const updateCategories = () => {
+    categories.value = [
+        ...new Set(
+            products.value
+                .map(p => p.category)
+                .filter(Boolean)
+        )
+    ]
+}
+
+onMounted(loadProducts)
+
+/* =========================
+   WATCHERS
+========================= */
 
 watch([search, selectedCategory, sortBy, sortDirection], () => {
     currentPage.value = 1
@@ -62,6 +104,10 @@ watch([search, selectedCategory, sortBy, sortDirection], () => {
 })
 
 watch(currentPage, loadProducts)
+
+/* =========================
+   IMÁGENES
+========================= */
 
 const uploadImage = async (file: File) => {
     const fileName = `${Date.now()}-${file.name}`
@@ -82,33 +128,143 @@ const uploadImage = async (file: File) => {
     return data.publicUrl
 }
 
-const imageFile = ref<File | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
-
-const handleFileChange = (event: Event) => {
+const handleFiles = (event: Event) => {
     const target = event.target as HTMLInputElement
-    imageFile.value = target.files?.[0] || null
+    if (!target.files) return
+
+    const files = Array.from(target.files)
+
+    const total =
+        form.images.length +
+        imageFiles.value.length +
+        files.length
+
+    if (total > 5) {
+        alert('Máximo 5 imágenes en total')
+        return
+    }
+
+    imageFiles.value = [...imageFiles.value, ...files]
+
+    if (fileInput.value) {
+        fileInput.value.value = ''
+    }
 }
 
+type CombinedImage =
+    | { type: 'existing'; value: string }
+    | { type: 'new'; value: File }
+
+const combinedImages = computed<CombinedImage[]>(() => {
+    return [
+        ...form.images.map(
+            (img): CombinedImage => ({
+                type: 'existing',
+                value: img
+            })
+        ),
+        ...imageFiles.value.map(
+            (file): CombinedImage => ({
+                type: 'new',
+                value: file
+            })
+        )
+    ]
+})
+
+const totalPages = computed(() =>
+    Math.max(1, Math.ceil(totalProducts.value / itemsPerPage))
+)
+
+const getImageSrc = (item: CombinedImage) =>
+    item.type === 'existing'
+        ? item.value
+        : import.meta.client
+            ? URL.createObjectURL(item.value)
+            : ''
+
+const splitCombined = (list: CombinedImage[]) => {
+    form.images = list
+        .filter(i => i.type === 'existing')
+        .map(i => i.value)
+
+    imageFiles.value = list
+        .filter(i => i.type === 'new')
+        .map(i => i.value)
+}
+
+const moveCombinedLeft = (index: number) => {
+    if (index === 0) return
+    const list = [...combinedImages.value]
+    const item = list[index]
+    list.splice(index, 1)
+    list.splice(index - 1, 0, item)
+    splitCombined(list)
+}
+
+const moveCombinedRight = (index: number) => {
+    if (index === combinedImages.value.length - 1) return
+    const list = [...combinedImages.value]
+    const item = list[index]
+    list.splice(index, 1)
+    list.splice(index + 1, 0, item)
+    splitCombined(list)
+}
+
+const removeCombined = (index: number) => {
+    const list = [...combinedImages.value]
+    list.splice(index, 1)
+    splitCombined(list)
+}
+
+/* =========================
+   GUARDAR PRODUCTO
+========================= */
+
 const saveProduct = async () => {
-    loading.value = true
-
-    let imageUrl = form.image
-
-    if (imageFile.value) {
-        const uploadedUrl = await uploadImage(imageFile.value)
-        if (uploadedUrl) imageUrl = uploadedUrl
+    if (!form.name.trim()) {
+        alert('El nombre es obligatorio')
+        return
     }
+
+    loading.value = true
+    const isEditing = !!form.id
+
+    form.category = normalizeCategory(form.category)
+
+    let imageUrls = [...form.images]
+
+    if (!isEditing && imageUrls.length === 0 && imageFiles.value.length === 0) {
+        alert('Debés subir al menos 1 imagen')
+        loading.value = false
+        return
+    }
+
+    if (imageFiles.value.length > 0) {
+        const uploads = await Promise.all(
+            imageFiles.value.map(uploadImage)
+        )
+
+        imageUrls = [
+            ...imageUrls,
+            ...uploads.filter(Boolean) as string[]
+        ]
+    }
+
+    let slug = generateSlug(form.name)
+    if (!isEditing) slug = `${slug}-${Date.now()}`
 
     const payload = {
         name: form.name,
         price: Number(form.price),
-        image: imageUrl,
         description: form.description || null,
-        category: form.category
+        category: form.category,
+        slug,
+        images: imageUrls,
+        stock_online: Number(form.stock_online)
     }
 
-    const { error } = form.id
+    const { error } = isEditing
         ? await supabase.from('products').update(payload).eq('id', form.id)
         : await supabase.from('products').insert([payload])
 
@@ -119,10 +275,13 @@ const saveProduct = async () => {
     }
 
     resetForm()
-    imageFile.value = null
     await loadProducts()
     loading.value = false
 }
+
+/* =========================
+   EDITAR / ELIMINAR
+========================= */
 
 const editProduct = (p: any) => {
     Object.assign(form, p)
@@ -134,16 +293,25 @@ const deleteProduct = async (id: number) => {
     await loadProducts()
 }
 
+/* =========================
+   RESET
+========================= */
+
 const resetForm = () => {
     form.id = null
     form.name = ''
     form.price = ''
-    form.image = ''
     form.description = ''
     form.category = ''
-}
+    form.stock_online = 0
+    form.images = []
 
-onMounted(loadProducts)
+    imageFiles.value = []
+
+    if (fileInput.value) {
+        fileInput.value.value = ''
+    }
+}
 </script>
 
 <template>
@@ -154,9 +322,59 @@ onMounted(loadProducts)
         <div class="space-y-2">
             <input v-model="form.name" placeholder="Nombre" class="border p-2 w-full" />
             <input v-model="form.price" placeholder="Precio" type="number" class="border p-2 w-full" />
-            <input v-model="form.category" placeholder="Categoría" class="border p-2 w-full" />
-            <input ref="fileInput" type="file" @change="handleFileChange" class="border p-2 w-full" />
+            <div class="flex flex-col gap-1">
+                <label class="text-sm font-medium">
+                    Categoría
+                </label>
+
+                <input v-model="form.category" list="categories-list" placeholder="Ej: Accesorios"
+                    class="border p-2 w-full" />
+
+                <datalist id="categories-list">
+                    <option v-for="cat in categories" :key="cat" :value="cat" />
+                </datalist>
+
+                <span class="text-xs text-gray-500">
+                    Escribí para buscar o crear una nueva
+                </span>
+            </div>
+            <input ref="fileInput" type="file" multiple @change="handleFiles" class="border p-2 w-full" />
+            <ClientOnly>
+                <div v-if="combinedImages.length" class="flex gap-2 mt-2">
+                    <div v-for="(item, index) in combinedImages"
+                        :key="item.type === 'existing' ? item.value : item.value.name + index"
+                        class="relative flex flex-col items-center">
+                        <img :src="getImageSrc(item)" class="w-16 h-16 object-cover rounded" />
+                        <div class="flex gap-1 mt-1">
+                            <button type="button" @click="moveCombinedLeft(index)" class="text-xs px-1 border rounded">
+                                ←
+                            </button>
+
+                            <button type="button" @click="moveCombinedRight(index)" class="text-xs px-1 border rounded">
+                                →
+                            </button>
+                        </div>
+
+                        <button type="button" @click="removeCombined(index)"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+                            ×
+                        </button>
+                    </div>
+                </div>
+            </ClientOnly>
             <textarea v-model="form.description" placeholder="Descripción" class="border p-2 w-full" />
+            <div class="flex flex-col gap-1">
+                <label class="text-sm font-medium">
+                    Stock disponible online
+                </label>
+
+                <input v-model.number="form.stock_online" type="number" min="0" placeholder="Ej: 10"
+                    class="border p-2 w-full" />
+
+                <span class="text-xs text-gray-500">
+                    Cantidad reservada para ventas online
+                </span>
+            </div>
 
             <button @click="saveProduct" class="bg-black text-white px-4 py-2" :disabled="loading">
                 {{ form.id ? 'Actualizar' : 'Agregar' }}
@@ -196,7 +414,7 @@ onMounted(loadProducts)
                 </div>
             </div>
         </div>
-        
+
         <div v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
             <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 border rounded">
                 ←

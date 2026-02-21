@@ -6,166 +6,84 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 
-const sortOption = ref('')
-
-// 🔎 búsqueda
-const search = ref('')
-
-// 🎛 categoría
-const selectedCategory = ref('')
-
-// 📄 paginación
-const currentPage = ref(1)
-
-onMounted(() => {
-  const pageFromQuery = parseInt(route.query.page)
-
-  if (!isNaN(pageFromQuery) && pageFromQuery > 0) {
-    currentPage.value = pageFromQuery
-  }
-})
-
-const itemsPerPage = 6
-
+// Estado
 const products = ref([])
-
+const search = ref('')
+const selectedCategory = ref('')
+const sortOption = ref('')
+const currentPage = ref(1)
+const itemsPerPage = 6
 const productsGrid = ref(null)
 
+// --------- CARGA INICIAL ---------
+
 onMounted(async () => {
+  // Leer query
+  const { page, category, search: qSearch, sort } = route.query
+
+  if (page && !isNaN(Number(page))) currentPage.value = Number(page)
+  if (typeof category === 'string') selectedCategory.value = category
+  if (typeof qSearch === 'string') search.value = qSearch
+  if (typeof sort === 'string') sortOption.value = sort
+
+  // Traer productos
   const { data, error } = await supabase
     .from('products')
     .select('*')
 
-  if (error) {
-    console.error(error)
-  } else {
-    products.value = data
-  }
+  if (!error) products.value = data
 })
 
-const filteredProducts = computed(() => {
-  let result = products.value.filter(product => {
+// --------- FILTRADO + ORDEN ---------
 
+const filteredProducts = computed(() => {
+  let result = products.value.filter(p => {
     const matchesSearch =
-      product.name?.toLowerCase().includes(search.value.toLowerCase())
+      p.name?.toLowerCase().includes(search.value.toLowerCase())
 
     const matchesCategory =
       !selectedCategory.value ||
-      product.category === selectedCategory.value
+      p.category === selectedCategory.value
 
     return matchesSearch && matchesCategory
   })
 
-  // 🔽 ORDENAMIENTO
   if (sortOption.value === 'price-asc') {
-    result = result.slice().sort((a, b) => a.price - b.price)
+    result = [...result].sort((a, b) => a.price - b.price)
   }
 
   if (sortOption.value === 'price-desc') {
-    result = result.slice().sort((a, b) => b.price - a.price)
+    result = [...result].sort((a, b) => b.price - a.price)
   }
 
   return result
 })
 
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredProducts.value.length / itemsPerPage))
-})
+// --------- PAGINACIÓN ---------
 
-const pages = computed(() => {
-  const total = totalPages.value
-  const current = currentPage.value
-  const delta = 1
-
-  const range = []
-  const rangeWithDots = []
-
-  for (let i = 1; i <= total; i++) {
-    if (
-      i === 1 ||
-      i === total ||
-      (i >= current - delta && i <= current + delta)
-    ) {
-      range.push(i)
-    }
-  }
-
-  let last
-
-  for (const page of range) {
-    if (last !== undefined) {
-      if (page === last + 2) {
-        rangeWithDots.push(last + 1)
-      } else if (page > last + 2) {
-        rangeWithDots.push('...')
-      }
-    }
-
-    rangeWithDots.push(page)
-    last = page
-  }
-
-  return rangeWithDots
-})
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredProducts.value.length / itemsPerPage))
+)
 
 const paginatedProducts = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   return filteredProducts.value.slice(start, start + itemsPerPage)
 })
 
-watch([search, selectedCategory, sortOption], () => {
-  currentPage.value = 1
-})
-
-const changePage = (page) => {
-  if (typeof page !== 'number') return
-
-  if (page < 1) page = 1
-  if (page > totalPages.value) page = totalPages.value
-
-  currentPage.value = page
-
-  router.replace({
-    query: {
-      ...route.query,
-      page: currentPage.value
-    }
-  })
-
-  if (process.client && productsGrid.value) {
-    productsGrid.value.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    })
-  }
-}
-
-const categories = ref([])
-
-onMounted(async () => {
-  const { data } = await supabase
-    .from('products')
-    .select('category')
-
-  const unique = [...new Set(data.map(p => p.category))]
-  categories.value = unique
-})
+// --------- CATEGORÍAS DINÁMICAS ---------
 
 const categoriesWithCount = computed(() => {
   const counts = {}
 
-  products.value.forEach(product => {
-    const cat = product.category
-    if (!counts[cat]) {
-      counts[cat] = 0
-    }
-    counts[cat]++
-  })
+  for (const p of products.value) {
+    if (!p.category) continue
+    counts[p.category] = (counts[p.category] || 0) + 1
+  }
 
-  const result = Object.keys(counts)
-    .sort()
-    .map(cat => ({
-      label: `${cat} (${counts[cat]})`,
+  const result = Object.entries(counts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cat, count]) => ({
+      label: `${cat} (${count})`,
       value: cat
     }))
 
@@ -178,6 +96,41 @@ const categoriesWithCount = computed(() => {
   ]
 })
 
+// --------- SINCRONIZAR URL ---------
+
+const updateQuery = () => {
+  router.replace({
+    query: {
+      category: selectedCategory.value || undefined,
+      search: search.value || undefined,
+      sort: sortOption.value || undefined,
+      page: currentPage.value > 1 ? currentPage.value : undefined
+    }
+  })
+}
+
+watch([selectedCategory, search, sortOption], () => {
+  currentPage.value = 1
+  updateQuery()
+})
+
+const changePage = (page) => {
+  if (typeof page !== 'number') return
+
+  currentPage.value = Math.min(
+    Math.max(page, 1),
+    totalPages.value
+  )
+
+  updateQuery()
+
+  if (process.client && productsGrid.value) {
+    productsGrid.value.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+  }
+}
 </script>
 
 <template>
