@@ -1,5 +1,4 @@
-export interface ThemeConfig {
-  name: string
+export interface Theme {
   colors: {
     primary: string
     secondary: string
@@ -9,38 +8,33 @@ export interface ThemeConfig {
   radius: {
     base: string
   }
-  logo: string
-  storeName: string
 }
 
 export const themes = {
   tiendaA: {
-    name: 'Tienda A',
     colors: {
-      primary: '#111827',
-      secondary: '#6366f1',
+      primary: '#000000',
+      secondary: '#666666',
+      text: '#111111',
+      background: '#ffffff'
+    },
+    radius: {
+      base: '12px'
+    }
+  },
+
+  tiendaB: {
+    colors: {
+      primary: '#1e40af',
+      secondary: '#9333ea',
       text: '#111827',
       background: '#f9fafb'
     },
     radius: {
-      base: '12px'
-    },
-    logo: '/logos/tiendaA.png',
-    storeName: 'Tienda A'
-  },
-
-  tiendaB: {
-    name: 'Tienda B',
-    colors: {
-      primary: '#7c3aed',
-      secondary: '#f59e0b',
-      text: '#000000',
-      background: '#ffffff'
-    },
-    radius: {
-      base: '6px'
-    },
-    logo: '/logos/tiendaB.png',
-    storeName: 'Tienda B'
+      base: '8px'
+    }
   }
-} satisfies Record<string, ThemeConfig>
+
+} satisfies Record<string, Theme>
+
+export type StoreId = keyof typeof themes
