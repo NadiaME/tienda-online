@@ -91,7 +91,7 @@ const animateToCart = () => {
 <template>
   <div class="border rounded-xl p-4 shadow">
     <NuxtLink
-      :to="`/producto/${product.slug}`"
+      :to="`/product/${product.slug}`"
       prefetch-on="interaction"
     >
       <div ref="productImage">

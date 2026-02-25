@@ -1,5 +1,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
+
   css: ['assets/scss/main.scss'],
 
   modules: [
@@ -10,37 +11,30 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      adminPassword: process.env.ADMIN_PASSWORD,
-      mpPublicKey: process.env.MP_PUBLIC_KEY,
+      adminPassword: process.env.ADMIN_PASSWORD ?? '',
+      mpPublicKey: process.env.MP_PUBLIC_KEY ?? '',
       storeId: process.env.STORE_ID ?? 'tiendaA',
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY
+      supabaseUrl: process.env.SUPABASE_URL ?? '',
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? ''
     },
-    mpAccessToken: process.env.MP_ACCESS_TOKEN,
-    mpSuccessUrl: process.env.MP_SUCCESS_URL,
-    mpFailureUrl: process.env.MP_FAILURE_URL,
-    mpPendingUrl: process.env.MP_PENDING_URL
+    mpAccessToken: process.env.MP_ACCESS_TOKEN ?? '',
+    mpSuccessUrl: process.env.MP_SUCCESS_URL ?? '',
+    mpFailureUrl: process.env.MP_FAILURE_URL ?? '',
+    mpPendingUrl: process.env.MP_PENDING_URL ?? ''
   },
 
   vite: {
     server: {
       watch: {
-        // 🔥 evita loops infinitos (.nuxt rebuild)
         ignored: ['**/.nuxt/**', '**/node_modules/**']
       }
     },
-
     css: {
       preprocessorOptions: {
         scss: {
-          // 🔇 silencia warning legacy sass
           silenceDeprecations: ['legacy-js-api']
         }
       }
-    },
-
-    optimizeDeps: {
-      include: []
     }
   },
 
@@ -55,16 +49,12 @@ export default defineNuxtConfig({
     }
   },
 
-  // mejora HMR en Windows
-  experimental: {
-    watcher: 'chokidar',
-  },
-
-  routeRules: {
-    '/': { isr: 300 },
-    '/productos': { isr: 120 },
-    '/producto/**': { isr: 60 },
-  },
-
-  compatibilityDate: '2026-02-18'
+  routeRules:
+  process.env.NODE_ENV === 'production'
+    ? {
+        '/': { isr: 300 },
+        '/productos': { isr: 120 },
+        '/producto/**': { isr: 60 },
+      }
+    : {},
 })
