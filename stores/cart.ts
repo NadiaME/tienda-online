@@ -57,8 +57,6 @@ export const useCartStore = defineStore('cart', {
 
   actions: {
 
-    /* --- INIT (SSR SAFE) --- */
-
     init() {
       if (!import.meta.client || this.hydrated) return
 
@@ -70,8 +68,6 @@ export const useCartStore = defineStore('cart', {
       this.hydrated = true
     },
 
-    /* --- ADD PRODUCT --- */
-
     add(product: Product) {
       const qtyToAdd = product.quantity ?? 1
       const maxStock = product.stock_online ?? Infinity
@@ -79,20 +75,16 @@ export const useCartStore = defineStore('cart', {
       const existing = this.items.find(i => i.id === product.id)
 
       if (existing) {
-        const newQty = Math.min(
+        existing.quantity = Math.min(
           existing.quantity + qtyToAdd,
           maxStock
         )
-        existing.quantity = newQty
       } else {
         this.items.push({
           id: product.id,
           name: product.name,
           price: product.price,
-          image:
-            product.images?.[0] ||
-            product.image ||
-            '',
+          image: product.images?.[0] || product.image || '',
           quantity: Math.min(qtyToAdd, maxStock)
         })
       }
@@ -101,34 +93,46 @@ export const useCartStore = defineStore('cart', {
       this.persist()
     },
 
-    /* --- REMOVE --- */
+    increase(id: number, maxStock?: number) {
+      const item = this.items.find(i => i.id === id)
+      if (!item) return
 
-    remove(index: number) {
-      this.items.splice(index, 1)
+      const limit = maxStock ?? Infinity
+      item.quantity = Math.min(item.quantity + 1, limit)
       this.persist()
     },
 
-    /* --- CLEAR --- */
+    decrease(id: number) {
+      const item = this.items.find(i => i.id === id)
+      if (!item) return
+
+      if (item.quantity > 1) {
+        item.quantity--
+      } else {
+        this.removeById(id)
+        return
+      }
+
+      this.persist()
+    },
+
+    removeById(id: number) {
+      this.items = this.items.filter(i => i.id !== id)
+      this.persist()
+    },
 
     clearCart() {
       this.items = []
       this.persist()
     },
 
-    /* --- TOGGLE DRAWER --- */
-
     toggle() {
       this.open = !this.open
     },
 
-    /* --- PERSISTENCIA --- */
-
     persist() {
       if (!import.meta.client) return
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(this.items)
-      )
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items))
     }
   }
 })

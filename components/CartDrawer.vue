@@ -95,21 +95,35 @@ function checkout() {
                     El carrito está vacío
                 </div>
 
-                <ul class="flex-1 overflow-auto">
-                    <li v-for="(item, index) in cart.items" :key="index" class="flex justify-between items-center mb-2">
-                        <div>
-                            <NuxtImg v-if="item.image" :src="item.image" width="60" height="60"
-                                class="rounded-lg object-cover" />
-                            <span>x{{ item.quantity }}</span>
-                            <p class="font-medium">{{ item.name }}</p>
-                            <p class="text-sm text-gray-500">$ {{ item.price }}</p>
-                        </div>
+                <div v-for="item in cart.items" :key="item.id" class="flex justify-between items-center">
 
-                        <button @click="cart.remove(index)" class="text-red-600 text-sm">
-                            Quitar
-                        </button>
-                    </li>
-                </ul>
+                    <div class="flex items-center gap-3">
+                        <img :src="item.image" class="w-12 h-12 object-cover rounded" />
+
+                        <div>
+                            <p class="font-medium">{{ item.name }}</p>
+                            <p class="text-sm text-gray-500">
+                                ${{ item.price }} c/u
+                            </p>
+
+                            <div class="flex items-center gap-2 mt-1">
+                                <button @click="cart.decrease(item.id)" class="px-2 border rounded">
+                                    -
+                                </button>
+
+                                <span>{{ item.quantity }}</span>
+
+                                <button @click="cart.increase(item.id)" class="px-2 border rounded">
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="cart.removeById(item.id)" class="text-red-500 text-sm">
+                        Eliminar producto
+                    </button>
+                </div>
 
                 <div class="border-t pt-4">
                     <p class="font-semibold mb-2">

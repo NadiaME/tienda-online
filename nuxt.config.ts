@@ -23,38 +23,28 @@ export default defineNuxtConfig({
     mpPendingUrl: process.env.MP_PENDING_URL ?? ''
   },
 
+  // 👇 IMPORTANTE: desactivar ISR en dev
+  routeRules: process.env.NODE_ENV === 'production'
+    ? {
+        '/': { isr: 300 },
+        '/productos': { isr: 120 },
+        '/producto/**': { isr: 60 }
+      }
+    : {},
+
+  // 👇 estabiliza watcher en Windows
   vite: {
     server: {
       watch: {
+        usePolling: true,
+        interval: 1000,
         ignored: ['**/.nuxt/**', '**/node_modules/**']
-      }
-    },
-    css: {
-      preprocessorOptions: {
-        scss: {
-          silenceDeprecations: ['legacy-js-api']
-        }
       }
     }
   },
 
   image: {
     format: ['avif', 'webp'],
-    quality: 80,
-    screens: {
-      sm: 320,
-      md: 640,
-      lg: 1024,
-      xl: 1280
-    }
-  },
-
-  routeRules:
-  process.env.NODE_ENV === 'production'
-    ? {
-        '/': { isr: 300 },
-        '/productos': { isr: 120 },
-        '/producto/**': { isr: 60 },
-      }
-    : {},
+    quality: 80
+  }
 })
