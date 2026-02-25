@@ -14,6 +14,7 @@ const sortOption = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 6
 const productsGrid = ref(null)
+const storeId = useRuntimeConfig().public.storeId
 
 // --------- CARGA INICIAL ---------
 
@@ -30,6 +31,7 @@ onMounted(async () => {
   const { data, error } = await supabase
     .from('products')
     .select('*')
+    .eq('store_id', storeId)
 
   if (!error) products.value = data
 })

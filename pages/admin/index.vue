@@ -18,6 +18,7 @@ const search = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('created_at')
 const sortDirection = ref<'asc' | 'desc'>('desc')
+const storeId = useRuntimeConfig().public.storeId
 
 const imageFiles = ref<File[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -63,6 +64,7 @@ const loadProducts = async () => {
     let query = supabase
         .from('products')
         .select('*', { count: 'exact' })
+        .eq('store_id', storeId)
 
     if (search.value)
         query = query.ilike('name', `%${search.value}%`)
@@ -111,10 +113,11 @@ watch(currentPage, loadProducts)
 
 const uploadImage = async (file: File) => {
     const fileName = `${Date.now()}-${file.name}`
+    const filePath = `${storeId}/${fileName}`
 
     const { error } = await supabase.storage
         .from('products')
-        .upload(fileName, file)
+        .upload(filePath, file)
 
     if (error) {
         alert('Error subiendo imagen')
@@ -123,7 +126,7 @@ const uploadImage = async (file: File) => {
 
     const { data } = supabase.storage
         .from('products')
-        .getPublicUrl(fileName)
+        .getPublicUrl(filePath)
 
     return data.publicUrl
 }
@@ -265,8 +268,14 @@ const saveProduct = async () => {
     }
 
     const { error } = isEditing
-        ? await supabase.from('products').update(payload).eq('id', form.id)
-        : await supabase.from('products').insert([payload])
+        ? await supabase
+            .from('products')
+            .update(payload)
+            .eq('id', form.id)
+            .eq('store_id', storeId)
+        : await supabase
+            .from('products')
+            .insert([{ ...payload, store_id: storeId }])
 
     if (error) {
         alert(error.message)
@@ -289,7 +298,11 @@ const editProduct = (p: any) => {
 
 const deleteProduct = async (id: number) => {
     if (!confirm('¿Eliminar producto?')) return
-    await supabase.from('products').delete().eq('id', id)
+    await supabase
+        .from('products')
+        .delete()
+        .eq('id', id)
+        .eq('store_id', storeId)
     await loadProducts()
 }
 

@@ -1,5 +1,7 @@
 import { supabase } from '@/utils/supabase'
 
+const storeId = useRuntimeConfig().public.storeId
+
 export const useOrders = () => {
     const createOrder = async ({
         name,
@@ -25,16 +27,19 @@ export const useOrders = () => {
             return { success: false }
         }
 
-        const { error } = await supabase.from('orders').insert([
-            {
-                customer_name: name || null,
-                customer_email: email || null,
-                customer_phone: phone || null,
-                items: cartItems,
-                total,
-                status
-            }
-        ])
+        const { error } = await supabase
+            .from('orders')
+            .insert([
+                {
+                    store_id: storeId,
+                    customer_name: name || null,
+                    customer_email: email || null,
+                    customer_phone: phone || null,
+                    items: cartItems,
+                    total,
+                    status
+                }
+            ])
 
         if (error) {
             console.error(error)

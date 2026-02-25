@@ -10,13 +10,14 @@ const cart = useCartStore()
 /* =========================
    FETCH PRODUCTO
 ========================= */
-
+const storeId = useRuntimeConfig().public.storeId
 const { data: product, error } = await useAsyncData(
     `product-${route.params.slug}`,
     async () => {
         const { data, error } = await supabase
             .from('products')
             .select('*')
+            .eq('store_id', storeId)
             .eq('slug', route.params.slug)
             .single()
 

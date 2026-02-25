@@ -8,6 +8,7 @@ const loadOrders = async () => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .eq('store_id', storeId)
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -23,6 +24,7 @@ const markDelivered = async (id) => {
     await supabase
         .from('orders')
         .update({ status: 'entregado' })
+        .eq('store_id', storeId)
         .eq('id', id)
 
     loadOrders()
