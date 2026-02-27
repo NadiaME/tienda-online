@@ -1,5 +1,5 @@
 <script setup>
-import { supabase } from '@/utils/supabase'
+const supabase = useSupabase()
 
 const orders = ref([])
 const loading = ref(true)

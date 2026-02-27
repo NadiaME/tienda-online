@@ -3,6 +3,7 @@ import { useCartStore } from '@/stores/cart'
 import { clientConfig } from '@/data/client.config'
 import { buildWhatsAppMessage } from '@/utils/whatsapp'
 import { useOrders } from '@/composables/useOrders'
+import { ref } from 'vue'
 
 const { createOrder } = useOrders()
 
@@ -82,6 +83,58 @@ function checkout() {
         '_blank'
     )
 }
+
+const paymentMethod = ref('transfer')
+
+const handleCheckout = async () => {
+    if (!cart.items.length || loading.value) return
+
+    loading.value = true
+
+    if (paymentMethod.value === 'transfer') {
+        const result = await createOrder({
+            name: '',
+            email: '',
+            phone: '',
+            cartItems: cart.items
+        })
+
+        if (!result.success) {
+            loading.value = false
+            alert('Error al enviar el pedido')
+            return
+        }
+
+        const message = buildWhatsAppMessage(cart.items, cart.totalPrice)
+        const phone = '59899423916'
+
+        window.open(`https://wa.me/${phone}?text=${message}`, '_blank')
+
+        cart.clearCart()
+        cart.open = false
+        loading.value = false
+        return
+    }
+
+    if (paymentMethod.value === 'mp') {
+        const { data, error } = await useFetch('/api/mercadopago/create-preference', {
+            method: 'POST',
+            body: {
+                items: cart.items,
+                total: cart.totalPrice
+            }
+        })
+
+        loading.value = false
+
+        if (error.value || !data.value?.init_point) {
+            alert('Error al iniciar el pago')
+            return
+        }
+
+        window.location.href = data.value.init_point
+    }
+}
 </script>
 
 <template>
@@ -113,10 +166,15 @@ function checkout() {
 
                                 <span>{{ item.quantity }}</span>
 
-                                <button @click="cart.increase(item.id)" class="px-2 border rounded">
+                                <button @click="cart.increase(item.id)" :disabled="item.quantity >= item.stock"
+                                    class="px-2 border rounded disabled:opacity-50">
                                     +
                                 </button>
                             </div>
+
+                            <p v-if="item.quantity >= item.stock" class="text-xs text-red-500 mt-1">
+                                Solo quedan {{ item.stock }} unidades disponibles
+                            </p>
                         </div>
                     </div>
 
@@ -130,34 +188,29 @@ function checkout() {
                         Total: $ {{ cart.totalPrice }}
                     </p>
 
+                    <div class="mb-4 space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" value="transfer" v-model="paymentMethod" />
+                            <span>Transferencia / WhatsApp</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" value="mp" v-model="paymentMethod" />
+                            <span>Pagar con MercadoPago</span>
+                        </label>
+                    </div>
+
                     <div class="space-y-3">
-                        <button
-                            class="w-full bg-green-600 text-white py-2 rounded flex items-center justify-center gap-2 disabled:opacity-50"
-                            @click="payWithMercadoPago" :disabled="loading">
-                            <svg v-if="loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4" />
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                            </svg>
-
-                            {{ loading ? 'Procesando...' : 'Pagar pedido' }}
+                        <button class="w-full py-2 rounded text-white disabled:opacity-50"
+                            :class="paymentMethod === 'mp' ? 'bg-blue-600' : 'bg-green-600'" @click="handleCheckout"
+                            :disabled="loading || !cart.items.length">
+                            {{ loading
+                                ? 'Procesando...'
+                                : paymentMethod === 'mp'
+                                    ? 'Pagar con MercadoPago'
+                                    : 'Enviar pedido por WhatsApp'
+                            }}
                         </button>
-
-
-
-                        <button
-                            class="w-full border py-2 rounded flex items-center justify-center gap-2 disabled:opacity-50"
-                            @click="submitOrder" :disabled="loading">
-                            <svg v-if="loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4" />
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                            </svg>
-
-                            {{ loading ? 'Enviando...' : 'Enviar pedido por WhatsApp' }}
-                        </button>
-
-
                     </div>
 
                     <button @click="cart.toggle" class="w-full text-center text-sm text-gray-500">

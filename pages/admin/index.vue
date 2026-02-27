@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { supabase } from '@/utils/supabase'
 import { ref, computed, watch, reactive, onMounted } from 'vue'
 
 /* =========================
    ESTADO
 ========================= */
 
+const { $supabase } = useNuxtApp()
 const products = ref<any[]>([])
 const categories = ref<string[]>([])
 const loading = ref(false)
@@ -61,7 +61,7 @@ const loadProducts = async () => {
     const from = (currentPage.value - 1) * itemsPerPage
     const to = from + itemsPerPage - 1
 
-    let query = supabase
+    let query = $supabase
         .from('products')
         .select('*', { count: 'exact' })
         .eq('store_id', storeId)
@@ -115,7 +115,7 @@ const uploadImage = async (file: File) => {
     const fileName = `${Date.now()}-${file.name}`
     const filePath = `${storeId}/${fileName}`
 
-    const { error } = await supabase.storage
+    const { error } = await $supabase.storage
         .from('products')
         .upload(filePath, file)
 
@@ -124,7 +124,7 @@ const uploadImage = async (file: File) => {
         return null
     }
 
-    const { data } = supabase.storage
+    const { data } = $supabase.storage
         .from('products')
         .getPublicUrl(filePath)
 
@@ -268,12 +268,12 @@ const saveProduct = async () => {
     }
 
     const { error } = isEditing
-        ? await supabase
+        ? await $supabase
             .from('products')
             .update(payload)
             .eq('id', form.id)
             .eq('store_id', storeId)
-        : await supabase
+        : await $supabase
             .from('products')
             .insert([{ ...payload, store_id: storeId }])
 
@@ -298,7 +298,7 @@ const editProduct = (p: any) => {
 
 const deleteProduct = async (id: number) => {
     if (!confirm('¿Eliminar producto?')) return
-    await supabase
+    await $supabase
         .from('products')
         .delete()
         .eq('id', id)

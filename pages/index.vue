@@ -1,8 +1,8 @@
 <script setup>
-import { supabase } from '@/utils/supabase'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+const { $supabase } = useNuxtApp()
 const route = useRoute()
 const router = useRouter()
 
@@ -28,7 +28,7 @@ onMounted(async () => {
   if (typeof sort === 'string') sortOption.value = sort
 
   // Traer productos
-  const { data, error } = await supabase
+  const { data, error } = await $supabase
     .from('products')
     .select('*')
     .eq('store_id', storeId)

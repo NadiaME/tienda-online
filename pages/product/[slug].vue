@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { supabase } from '@/utils/supabase'
 import { useRoute } from 'vue-router'
 import { ref, watch, computed } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useUiStore } from '@/stores/ui'
 
+const ui = useUiStore()
+const { $supabase } = useNuxtApp()
 const route = useRoute()
 const cart = useCartStore()
 
@@ -14,7 +16,7 @@ const storeId = useRuntimeConfig().public.storeId
 const { data: product, error } = await useAsyncData(
     `product-${route.params.slug}`,
     async () => {
-        const { data, error } = await supabase
+        const { data, error } = await $supabase
             .from('products')
             .select('*')
             .eq('store_id', storeId)
@@ -95,8 +97,11 @@ const decreaseQty = () => {
 const addToCart = () => {
     if (!product.value || !inStock.value) return
 
-    cart.add({
-        ...product.value,
+    cart.add(product.value, quantity.value)
+
+    ui.showToast({
+        message: 'Producto agregado al carrito',
+        image: product.value.images?.[0],
         quantity: quantity.value
     })
 }
@@ -215,7 +220,8 @@ useHead(() => {
                             {{ quantity }}
                         </span>
 
-                        <button @click="increaseQty" class="px-3 py-1 border rounded">
+                        <button @click="increaseQty" :disabled="quantity >= product.stock_online"
+                            class="px-3 py-1 border rounded disabled:opacity-50">
                             +
                         </button>
                         <p v-if="maxReached" class="text-xs text-red-500">
@@ -224,13 +230,11 @@ useHead(() => {
                     </div>
 
                     <!-- Botón -->
-                    <button @click="addToCart" :disabled="product.stock_online === 0"
+                    <button @click="addToCart" :disabled="!inStock"
                         class="bg-black text-white px-6 py-3 rounded-lg transition" :class="product.stock_online === 0
                             ? 'opacity-50 cursor-not-allowed'
                             : 'hover:bg-gray-800'">
-                        {{ product.stock_online > 0
-                            ? 'Agregar al carrito'
-                            : 'No disponible online' }}
+                        {{ inStock ? 'Agregar al carrito' : 'No disponible online' }}
                     </button>
 
                 </div>

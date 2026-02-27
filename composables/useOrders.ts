@@ -1,4 +1,4 @@
-import { supabase } from '@/utils/supabase'
+const { $supabase } = useNuxtApp()
 
 const storeId = useRuntimeConfig().public.storeId
 
@@ -27,7 +27,7 @@ export const useOrders = () => {
             return { success: false }
         }
 
-        const { error } = await supabase
+        const { error } = await $supabase
             .from('orders')
             .insert([
                 {
