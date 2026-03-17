@@ -1,0 +1,17 @@
+@keyframes shimmer {
+    0% {
+        left: -75%;
+    }
+
+    100% {
+        left: 125%;
+    }
+}
+
+.shimmer {
+    animation: shimmer 1.5s ease-in-out;
+}
+
+.coming-soon--title {
+  font-family: 'Playfair Display', serif;
+}

@@ -1,6 +1,5 @@
 <script setup>
 import { useCartStore } from '@/stores/cart'
-import { clientConfig } from '@/data/client.config'
 import { buildWhatsAppMessage } from '@/utils/whatsapp'
 import { useOrders } from '@/composables/useOrders'
 import { ref } from 'vue'
@@ -79,7 +78,7 @@ const sendOrderByWhatsApp = () => {
 function checkout() {
     const msg = buildWhatsAppMessage(cart.items)
     window.open(
-        `https://wa.me/${clientConfig.whatsapp}?text=${msg}`,
+        `https://wa.me/${settings.whatsapp}?text=${msg}`,
         '_blank'
     )
 }

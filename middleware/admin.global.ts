@@ -1,17 +1,18 @@
+import { useAdminAuth } from '~/composables/useAdminAuth'
+
 export default defineNuxtRouteMiddleware((to) => {
   if (process.server) return
-  if (to.path !== '/admin') return
+  if (!to.path.startsWith('/admin')) return
 
-  const config = useRuntimeConfig()
-  const access = useCookie('admin_access')
+  const { isAuthenticated, login } = useAdminAuth()
 
-  if (access.value !== config.public.adminPassword) {
+  if (!isAuthenticated.value) {
     const password = window.prompt('Clave de acceso al admin:')
 
-    if (password === config.public.adminPassword) {
-      access.value = password
-    } else {
+    if (!password || !login(password)) {
       return navigateTo('/')
     }
+
+    return navigateTo(to.fullPath, { replace: true })
   }
 })

@@ -9,6 +9,17 @@ export default defineNuxtConfig({
     '@pinia/nuxt'
   ],
 
+  supabase: {
+    redirect: false
+  },
+
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false
+    }
+  ],
+
   runtimeConfig: {
     public: {
       mpPublicKey: process.env.MP_PUBLIC_KEY ?? '',

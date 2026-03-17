@@ -5,7 +5,7 @@ import { useCartStore } from '@/stores/cart'
 import { useUiStore } from '@/stores/ui'
 
 const ui = useUiStore()
-const { $supabase } = useNuxtApp()
+const supabase = useSupabaseClient()
 const route = useRoute()
 const cart = useCartStore()
 
@@ -16,7 +16,7 @@ const storeId = useRuntimeConfig().public.storeId
 const { data: product, error } = await useAsyncData(
     `product-${route.params.slug}`,
     async () => {
-        const { data, error } = await $supabase
+        const { data, error } = await supabase
             .from('products')
             .select('*')
             .eq('store_id', storeId)

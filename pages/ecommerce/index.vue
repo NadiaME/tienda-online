@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-const { $supabase } = useNuxtApp()
+const supabase = useSupabaseClient()
 const route = useRoute()
 const router = useRouter()
 
@@ -28,7 +28,7 @@ onMounted(async () => {
   if (typeof sort === 'string') sortOption.value = sort
 
   // Traer productos
-  const { data, error } = await $supabase
+  const { data, error } = await supabase
     .from('products')
     .select('*')
     .eq('store_id', storeId)
@@ -133,6 +133,10 @@ const changePage = (page) => {
     })
   }
 }
+
+definePageMeta({
+  showCart: true
+})
 </script>
 
 <template>

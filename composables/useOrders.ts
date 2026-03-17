@@ -1,4 +1,4 @@
-const { $supabase } = useNuxtApp()
+const supabase = useSupabaseClient<any>()
 
 const storeId = useRuntimeConfig().public.storeId
 
@@ -27,7 +27,7 @@ export const useOrders = () => {
             return { success: false }
         }
 
-        const { error } = await $supabase
+        const { error } = await supabase
             .from('orders')
             .insert([
                 {
@@ -41,9 +41,11 @@ export const useOrders = () => {
                 }
             ])
 
+        if (error) console.error(error)
+
         if (error) {
-            console.error(error)
-            return { success: false }
+            console.error('Order insert error:', error.message)
+            throw error
         }
 
         return { success: true }
