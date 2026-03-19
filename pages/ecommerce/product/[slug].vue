@@ -3,6 +3,8 @@ import { useRoute } from 'vue-router'
 import { ref, watch, computed } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useUiStore } from '@/stores/ui'
+import type { Product } from '@/types/product'
+import { mapToCartProduct } from '@/utils/mapProduct'
 
 const ui = useUiStore()
 const supabase = useSupabaseClient()
@@ -12,8 +14,10 @@ const cart = useCartStore()
 /* =========================
    FETCH PRODUCTO
 ========================= */
+
 const storeId = useRuntimeConfig().public.storeId
-const { data: product, error } = await useAsyncData(
+
+const { data: product, error } = await useAsyncData<Product | null>(
     `product-${route.params.slug}`,
     async () => {
         const { data, error } = await supabase
@@ -36,6 +40,12 @@ if (error.value) {
 }
 
 /* =========================
+   COMPUTED SEGURO
+========================= */
+
+const p = computed(() => product.value)
+
+/* =========================
    ESTADO LOCAL
 ========================= */
 
@@ -48,7 +58,7 @@ const maxReached = ref(false)
 ========================= */
 
 watch(
-    () => product.value,
+    () => p.value,
     (newProduct) => {
         quantity.value = 1
         maxReached.value = false
@@ -64,18 +74,18 @@ watch(
    STOCK
 ========================= */
 
-const inStock = computed(() =>
-    product.value?.stock_online > 0
-)
+const inStock = computed(() => {
+    return (p.value?.stock_online ?? 0) > 0
+})
 
 /* =========================
    CANTIDAD
 ========================= */
 
 const increaseQty = () => {
-    if (!product.value) return
+    if (!p.value) return
 
-    if (quantity.value < product.value.stock_online) {
+    if (quantity.value < p.value.stock_online) {
         quantity.value++
         maxReached.value = false
     } else {
@@ -95,15 +105,17 @@ const decreaseQty = () => {
 ========================= */
 
 const addToCart = () => {
-    if (!product.value || !inStock.value) return
+  const productData = p.value
 
-    cart.add(product.value, quantity.value)
+  if (!productData || !inStock.value) return
 
-    ui.showToast({
-        message: 'Producto agregado al carrito',
-        image: product.value.images?.[0],
-        quantity: quantity.value
-    })
+  cart.add(mapToCartProduct(productData), quantity.value)
+
+  ui.showToast({
+    message: 'Producto agregado al carrito',
+    image: productData.images?.[0] ?? null,
+    quantity: quantity.value
+  })
 }
 
 /* =========================
@@ -114,28 +126,28 @@ useHead(() => {
     const slug = route.params.slug as string
 
     return {
-        title: product.value?.name
-            ? `${product.value.name} | Tu Tienda`
+        title: p.value?.name
+            ? `${p.value.name} | Tu Tienda`
             : 'Producto',
 
         meta: [
             {
                 name: 'description',
                 content:
-                    product.value?.description ||
-                    `Comprá ${product.value?.name} al mejor precio`
+                    p.value?.description ||
+                    `Comprá ${p.value?.name} al mejor precio`
             },
             {
                 property: 'og:title',
-                content: product.value?.name
+                content: p.value?.name
             },
             {
                 property: 'og:description',
-                content: product.value?.description
+                content: p.value?.description
             },
             {
                 property: 'og:image',
-                content: product.value?.images?.[0]
+                content: p.value?.images?.[0]
             },
             {
                 property: 'og:type',
@@ -158,60 +170,65 @@ useHead(() => {
 </script>
 
 <template>
-    <nav class="text-sm mb-4 text-gray-500">
-        <NuxtLink to="/" class="hover:underline">
-            Inicio
-        </NuxtLink>
+    <!-- 🔒 TODO protegido -->
+    <div v-if="p">
 
-        <span v-if="product?.category">
-            /
-            <NuxtLink :to="`/?category=${product.category}`" class="hover:underline">
-                {{ product.category }}
+        <!-- Breadcrumb -->
+        <nav class="text-sm mb-4 text-gray-500">
+            <NuxtLink to="/" class="hover:underline">
+                Inicio
             </NuxtLink>
-        </span>
 
-        <span>
-            / {{ product?.name }}
-        </span>
-    </nav>
-    <div class="max-w-5xl mx-auto p-6">
-        <div class="grid md:grid-cols-2 gap-8">
+            <span v-if="p.category">
+                /
+                <NuxtLink :to="`/?category=${p.category}`" class="hover:underline">
+                    {{ p.category }}
+                </NuxtLink>
+            </span>
 
-            <div class="space-y-4">
+            <span>
+                / {{ p.name }}
+            </span>
+        </nav>
 
-                <!-- Imagen principal -->
-                <NuxtImg v-if="activeImage" :key="activeImage" :src="activeImage" format="webp" quality="80"
-                    class="w-full rounded-xl shadow transition-all duration-300" />
+        <div class="max-w-5xl mx-auto p-6">
+            <div class="grid md:grid-cols-2 gap-8">
 
-                <!-- Miniaturas -->
-                <div v-if="product.images?.length > 1" class="flex gap-2">
-                    <img v-for="(img, i) in product.images" :key="i" :src="img" @click="activeImage = img"
-                        class="w-20 h-20 object-cover rounded cursor-pointer border-2 transition" :class="img === activeImage
-                            ? 'border-black'
-                            : 'border-transparent hover:border-gray-400'" />
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <h1 class="text-3xl font-bold">
-                    {{ product.name }}
-                </h1>
-
-                <p class="text-2xl font-semibold">
-                    ${{ product.price }}
-                </p>
-
+                <!-- IMÁGENES -->
                 <div class="space-y-4">
 
-                    <!-- Stock -->
-                    <p class="text-sm" :class="product.stock_online > 0 ? 'text-green-600' : 'text-red-600'">
-                        {{ product.stock_online > 0
-                            ? `Disponible online: ${product.stock_online}`
+                    <NuxtImg v-if="activeImage" :key="activeImage" :src="activeImage" format="webp" quality="80"
+                        class="w-full rounded-xl shadow transition-all duration-300" />
+
+                    <div v-if="p.images?.length > 1" class="flex gap-2">
+                        <img v-for="(img, i) in p.images" :key="i" :src="img" @click="activeImage = img"
+                            class="w-20 h-20 object-cover rounded cursor-pointer border-2 transition" :class="img === activeImage
+                                ? 'border-black'
+                                : 'border-transparent hover:border-gray-400'" />
+                    </div>
+
+                </div>
+
+                <!-- INFO -->
+                <div class="space-y-4">
+
+                    <h1 class="text-3xl font-bold">
+                        {{ p.name }}
+                    </h1>
+
+                    <p class="text-2xl font-semibold">
+                        ${{ p.price }}
+                    </p>
+
+                    <p class="text-sm" :class="p.stock_online > 0 ? 'text-green-600' : 'text-red-600'">
+                        {{ p.stock_online > 0
+                            ? `Disponible online: ${p.stock_online}`
                             : 'Sin stock online' }}
                     </p>
 
-                    <!-- Selector cantidad -->
-                    <div v-if="product.stock_online > 0" class="flex items-center gap-3">
+                    <!-- CANTIDAD -->
+                    <div v-if="p.stock_online > 0" class="flex items-center gap-3">
+
                         <button @click="decreaseQty" class="px-3 py-1 border rounded">
                             -
                         </button>
@@ -220,29 +237,32 @@ useHead(() => {
                             {{ quantity }}
                         </span>
 
-                        <button @click="increaseQty" :disabled="quantity >= product.stock_online"
+                        <button @click="increaseQty" :disabled="quantity >= p.stock_online"
                             class="px-3 py-1 border rounded disabled:opacity-50">
                             +
                         </button>
+
                         <p v-if="maxReached" class="text-xs text-red-500">
                             Máximo disponible alcanzado
                         </p>
+
                     </div>
 
-                    <!-- Botón -->
+                    <!-- BOTÓN -->
                     <button @click="addToCart" :disabled="!inStock"
-                        class="bg-black text-white px-6 py-3 rounded-lg transition" :class="product.stock_online === 0
+                        class="bg-black text-white px-6 py-3 rounded-lg transition" :class="p.stock_online === 0
                             ? 'opacity-50 cursor-not-allowed'
                             : 'hover:bg-gray-800'">
                         {{ inStock ? 'Agregar al carrito' : 'No disponible online' }}
                     </button>
 
-                </div>
+                    <p class="text-gray-600">
+                        {{ p.description }}
+                    </p>
 
-                <p class="text-gray-600">
-                    {{ product.description }}
-                </p>
+                </div>
             </div>
         </div>
+
     </div>
 </template>
